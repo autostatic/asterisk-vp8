@@ -1,0 +1,94 @@
+diff -ru -x 'config.*' -x 'menuselect*' asterisk-11.1.2/channels/chan_sip.c asterisk-11.1.2+vp8/channels/chan_sip.c
+--- asterisk-11.1.2/channels/chan_sip.c	2013-01-02 20:23:44.000000000 +0100
++++ asterisk-11.1.2+vp8/channels/chan_sip.c	2013-01-15 09:30:29.165649305 +0100
+@@ -11041,7 +11041,7 @@
+ 		/* We have a rtpmap to handle */
+ 		if (*last_rtpmap_codec < SDP_MAX_RTPMAP_CODECS) {
+ 			/* Note: should really look at the '#chans' params too */
+-			if (!strncasecmp(mimeSubtype, "H26", 3) || !strncasecmp(mimeSubtype, "MP4", 3)) {
++			if (!strncasecmp(mimeSubtype, "H26", 3) || !strncasecmp(mimeSubtype, "MP4", 3) || !strncasecmp(mimeSubtype, "VP8", 3)) {
+ 				if (!(ast_rtp_codecs_payloads_set_rtpmap_type_rate(newvideortp, NULL, codec, "video", mimeSubtype, 0, sample_rate))) {
+ 					if (debug)
+ 						ast_verbose("Found video description format %s for ID %d\n", mimeSubtype, codec);
+@@ -30824,6 +30824,7 @@
+ 	ast_format_cap_add(cap, ast_format_set(&tmp_fmt, AST_FORMAT_ALAW, 0));
+ 	ast_format_cap_add(cap, ast_format_set(&tmp_fmt, AST_FORMAT_GSM, 0));
+ 	ast_format_cap_add(cap, ast_format_set(&tmp_fmt, AST_FORMAT_H263, 0));
++	ast_format_cap_add(cap, ast_format_set(&tmp_fmt, AST_FORMAT_VP8, 0));
+ }
+ 
+ static void display_nat_warning(const char *cat, int reason, struct ast_flags *flags) {
+diff -ru -x 'config.*' -x 'menuselect*' asterisk-11.1.2/channels/console_video.c asterisk-11.1.2+vp8/channels/console_video.c
+--- asterisk-11.1.2/channels/console_video.c	2012-06-15 18:20:16.000000000 +0200
++++ asterisk-11.1.2+vp8/channels/console_video.c	2013-01-15 09:07:56.594017146 +0100
+@@ -153,7 +153,7 @@
+ /*! The list of video formats we support. */
+ int console_video_formats = 
+ 	AST_FORMAT_H263_PLUS | AST_FORMAT_H263 |
+-	AST_FORMAT_MP4_VIDEO | AST_FORMAT_H264 | AST_FORMAT_H261 ;
++	AST_FORMAT_MP4_VIDEO | AST_FORMAT_H264 | AST_FORMAT_H261 | AST_FORMAT_VP8 ;
+ 
+ 
+ 
+diff -ru -x 'config.*' -x 'menuselect*' asterisk-11.1.2/include/asterisk/format.h asterisk-11.1.2+vp8/include/asterisk/format.h
+--- asterisk-11.1.2/include/asterisk/format.h	2012-07-13 20:41:07.000000000 +0200
++++ asterisk-11.1.2+vp8/include/asterisk/format.h	2013-01-15 09:08:58.027274530 +0100
+@@ -112,6 +112,8 @@
+ 	AST_FORMAT_H264             = 4 + AST_FORMAT_TYPE_VIDEO,
+ 	/*! MPEG4 Video */
+ 	AST_FORMAT_MP4_VIDEO        = 5 + AST_FORMAT_TYPE_VIDEO,
++	/*! VP8 Video */
++	AST_FORMAT_VP8 = 6 + AST_FORMAT_TYPE_VIDEO,
+ 
+ 	/*! JPEG Images */
+ 	AST_FORMAT_JPEG             = 1 + AST_FORMAT_TYPE_IMAGE,
+diff -ru -x 'config.*' -x 'menuselect*' asterisk-11.1.2/main/format.c asterisk-11.1.2+vp8/main/format.c
+--- asterisk-11.1.2/main/format.c	2012-10-02 03:27:19.000000000 +0200
++++ asterisk-11.1.2+vp8/main/format.c	2013-01-15 09:12:55.192119433 +0100
+@@ -449,6 +449,9 @@
+ 	/*! MPEG4 Video */
+ 	case AST_FORMAT_MP4_VIDEO:
+ 		return (1ULL << 22);
++	/*! VP8 Video */
++	case AST_FORMAT_VP8:
++		return (1ULL << 23);
+ 
+ 	/*! JPEG Images */
+ 	case AST_FORMAT_JPEG:
+@@ -551,6 +554,9 @@
+ 	/*! MPEG4 Video */
+ 	case (1ULL << 22):
+ 		return ast_format_set(dst, AST_FORMAT_MP4_VIDEO, 0);
++	/*! VP8 Video */
++	case (1ULL << 23):
++		return ast_format_set(dst, AST_FORMAT_VP8, 0);
+ 
+ 	/*! JPEG Images */
+ 	case (1ULL << 16):
+@@ -1056,6 +1062,7 @@
+ 	format_list_add_static(ast_format_set(&tmpfmt, AST_FORMAT_H263_PLUS, 0), "h263p", 0, "H.263+ Video", 0, 0, 0,0 ,0 ,0, 0);  /*!< H.263plus passthrough support See format_h263.c */
+ 	format_list_add_static(ast_format_set(&tmpfmt, AST_FORMAT_H264, 0), "h264", 0, "H.264 Video", 0, 0, 0, 0 ,0 ,0, 0);         /*!< Passthrough support, see format_h263.c */
+ 	format_list_add_static(ast_format_set(&tmpfmt, AST_FORMAT_MP4_VIDEO, 0), "mpeg4", 0, "MPEG4 Video", 0, 0, 0, 0, 0 ,0, 0);   /*!< Passthrough support for MPEG4 */
++	format_list_add_static(ast_format_set(&tmpfmt, AST_FORMAT_VP8, 0), "vp8", 0, "VP8 Video", 0, 0, 0, 0, 0 ,0, 0);   /*!< Passthrough support for VP8 */
+ 	format_list_add_static(ast_format_set(&tmpfmt, AST_FORMAT_T140RED, 0), "red", 1, "T.140 Realtime Text with redundancy", 0, 0, 0,0 ,0 ,0, 0);     /*!< Redundant T.140 Realtime Text */
+ 	format_list_add_static(ast_format_set(&tmpfmt, AST_FORMAT_T140, 0), "t140", 0, "Passthrough T.140 Realtime Text", 0, 0, 0, 0 ,0 ,0, 0);      /*!< Passthrough support for T.140 Realtime Text */
+ 	format_list_add_static(ast_format_set(&tmpfmt, AST_FORMAT_SIREN7, 0), "siren7", 16000, "ITU G.722.1 (Siren7, licensed from Polycom)", 80, 20, 80, 20, 20, 0, 0); /*!< Binary commercial distribution */
+diff -ru -x 'config.*' -x 'menuselect*' asterisk-11.1.2/main/rtp_engine.c asterisk-11.1.2+vp8/main/rtp_engine.c
+--- asterisk-11.1.2/main/rtp_engine.c	2012-09-20 20:18:47.000000000 +0200
++++ asterisk-11.1.2+vp8/main/rtp_engine.c	2013-01-15 09:14:16.713782036 +0100
+@@ -2262,6 +2262,7 @@
+ 	set_next_mime_type(ast_format_set(&tmpfmt, AST_FORMAT_H263, 0), 0, "video", "H263", 90000);
+ 	set_next_mime_type(ast_format_set(&tmpfmt, AST_FORMAT_H263_PLUS, 0), 0, "video", "h263-1998", 90000);
+ 	set_next_mime_type(ast_format_set(&tmpfmt, AST_FORMAT_H264, 0), 0, "video", "H264", 90000);
++	set_next_mime_type(ast_format_set(&tmpfmt, AST_FORMAT_VP8, 0), 0, "video", "VP8", 90000);
+ 	set_next_mime_type(ast_format_set(&tmpfmt, AST_FORMAT_MP4_VIDEO, 0), 0, "video", "MP4V-ES", 90000);
+ 	set_next_mime_type(ast_format_set(&tmpfmt, AST_FORMAT_T140RED, 0), 0, "text", "RED", 1000);
+ 	set_next_mime_type(ast_format_set(&tmpfmt, AST_FORMAT_T140, 0), 0, "text", "T140", 1000);
+@@ -2294,6 +2295,7 @@
+ 	add_static_payload(97, ast_format_set(&tmpfmt, AST_FORMAT_ILBC, 0), 0);
+ 	add_static_payload(98, ast_format_set(&tmpfmt, AST_FORMAT_H263_PLUS, 0), 0);
+ 	add_static_payload(99, ast_format_set(&tmpfmt, AST_FORMAT_H264, 0), 0);
++	add_static_payload(100, ast_format_set(&tmpfmt, AST_FORMAT_VP8, 0), 0); /* Should be 100 until I found how to support dynamic PT */
+ 	add_static_payload(101, NULL, AST_RTP_DTMF);
+ 	add_static_payload(102, ast_format_set(&tmpfmt, AST_FORMAT_SIREN7, 0), 0);
+ 	add_static_payload(103, ast_format_set(&tmpfmt, AST_FORMAT_H263_PLUS, 0), 0);
